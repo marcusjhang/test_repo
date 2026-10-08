@@ -1,0 +1,1 @@
+The demo's `message` listener never checks `event.origin` and writes the received data straight into the page with `innerHTML`, so any website that can send the page a message can inject arbitrary HTML and script. That turns a cross-origin message into cross-site scripting that runs in the page's own origin, letting an attacker read or act on whatever the user can access there.
