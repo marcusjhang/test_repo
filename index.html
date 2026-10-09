@@ -7,23 +7,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Insecure postMessage without Origin Validation (VULNERABLE)</title>
   <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 2rem; line-height: 1.5; }
-    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 1rem 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-    code, pre { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: .25rem .5rem; }
+    :root { --bg: #ffffff; --text: #111827; --surface: #ffffff; --border: #e5e7eb; --code-bg: #f8fafc; --shadow: rgba(0,0,0,0.06); --danger: #b91c1c; color-scheme: light; }
+    html.dark-pending body, body.dark { --bg: #0f172a; --text: #e2e8f0; --surface: #1e293b; --border: #334155; --code-bg: #111827; --shadow: rgba(0,0,0,0.4); --danger: #f87171; color-scheme: dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 2rem; line-height: 1.5; background: var(--bg); color: var(--text); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1rem 1.25rem; box-shadow: 0 1px 4px var(--shadow); }
+    code, pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: .25rem .5rem; }
     pre { padding: .75rem 1rem; overflow: auto; }
-    .danger { color: #b91c1c; font-weight: 700; }
-    #output { min-height: 48px; border: 1px dashed #e5e7eb; border-radius: 10px; padding: .75rem; background: #ffffff; }
+    .danger { color: var(--danger); font-weight: 700; }
+    #output { min-height: 48px; border: 1px dashed var(--border); border-radius: 10px; padding: .75rem; background: var(--surface); }
+    hr { border: 0; border-top: 1px solid var(--border); }
+    .card-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; }
+    .card-header p { margin: 0; }
+    .theme-toggle { font: inherit; font-size: .875rem; color: var(--text); background: var(--code-bg); border: 1px solid var(--border); border-radius: 999px; padding: .375rem .875rem; min-height: 2.25rem; cursor: pointer; }
+    .theme-toggle:hover { border-color: var(--text); }
   </style>
+  <script>
+    // Apply the theme before first paint to avoid a light flash: a saved choice wins,
+    // otherwise follow the operating system's dark mode setting.
+    (function () {
+      let saved = null;
+      try { saved = localStorage.getItem('theme'); } catch (e) {}
+      const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (saved !== 'light' && systemDark)) document.documentElement.classList.add('dark-pending');
+    })();
+  </script>
 </head>
 <body>
   <h1>Insecure <code>postMessage</code> without Origin Validation <span class="danger">(VULNERABLE)</span></h1>
   <p>This page intentionally demonstrates an insecure <code>message</code> event listener that <strong>does not validate <code>event.origin</code></strong> and blindly injects received content into the DOM.</p>
 
   <div class="card" style="margin: 1rem 0;">
-    <p><strong>Status</strong></p>
+    <div class="card-header">
+      <p><strong>Status</strong></p>
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false">🌙 Dark</button>
+    </div>
     <p id="origin">Last message origin: <em>(none)</em></p>
     <div id="output">No message yet.</div>
   </div>
+
+  <script>
+    // Dark mode toggle — kept separate from the demo listener below.
+    (function () {
+      const button = document.getElementById('theme-toggle');
+      function apply(dark) {
+        document.body.classList.toggle('dark', dark);
+        button.textContent = dark ? '☀️ Light' : '🌙 Dark';
+        button.setAttribute('aria-pressed', String(dark));
+      }
+      apply(document.documentElement.classList.contains('dark-pending'));
+      document.documentElement.classList.remove('dark-pending');
+      // Keep following the system setting until the user picks a theme themselves.
+      if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
+          let saved = null;
+          try { saved = localStorage.getItem('theme'); } catch (e) {}
+          if (saved !== 'dark' && saved !== 'light') apply(event.matches);
+        });
+      }
+      button.addEventListener('click', () => {
+        const dark = !document.body.classList.contains('dark');
+        apply(dark);
+        try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch (e) {}
+      });
+    })();
+  </script>
 
   <script>
     // VULNERABLE IMPLEMENTATION — DO NOT USE IN PRODUCTION
