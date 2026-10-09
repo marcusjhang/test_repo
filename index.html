@@ -22,8 +22,14 @@
     .theme-toggle:hover { border-color: var(--text); }
   </style>
   <script>
-    // Apply the saved theme before first paint to avoid a light flash.
-    try { if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark-pending'); } catch (e) {}
+    // Apply the theme before first paint to avoid a light flash: a saved choice wins,
+    // otherwise follow the operating system's dark mode setting.
+    (function () {
+      let saved = null;
+      try { saved = localStorage.getItem('theme'); } catch (e) {}
+      const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (saved !== 'light' && systemDark)) document.documentElement.classList.add('dark-pending');
+    })();
   </script>
 </head>
 <body>
@@ -50,6 +56,14 @@
       }
       apply(document.documentElement.classList.contains('dark-pending'));
       document.documentElement.classList.remove('dark-pending');
+      // Keep following the system setting until the user picks a theme themselves.
+      if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
+          let saved = null;
+          try { saved = localStorage.getItem('theme'); } catch (e) {}
+          if (saved !== 'dark' && saved !== 'light') apply(event.matches);
+        });
+      }
       button.addEventListener('click', () => {
         const dark = !document.body.classList.contains('dark');
         apply(dark);
